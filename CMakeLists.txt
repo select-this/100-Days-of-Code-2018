@@ -1,4 +1,4 @@
-########################################################################################################################
+##----------------------------------------------------------------------------------------------------------------------
 ##
 ## Copyright (c) 2018 Darren Paul Ferrie
 ##
@@ -15,10 +15,10 @@
 ## COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR
 ## OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 ##
-########################################################################################################################
+##----------------------------------------------------------------------------------------------------------------------
 
 # Set CMake minimum version
-cmake_minimum_required(VERSION 3.7)
+cmake_minimum_required(VERSION 3.10)
 
 # Use CCache if it's available
 find_program(CCACHE_FOUND ccache)
@@ -26,9 +26,6 @@ if(CCACHE_FOUND)
     set_property(GLOBAL PROPERTY RULE_LAUNCH_COMPILE ccache)
     set_property(GLOBAL PROPERTY RULE_LAUNCH_LINK ccache)
 endif()
-
-# Set project to use C++14
-set(CMAKE_CXX_STANDARD 14)
 
 # Set the configuration types
 set(CMAKE_CONFIGURATION_TYPES Debug Release CACHE TYPE INTERNAL FORCE)
@@ -125,14 +122,18 @@ enable_unity_build(${PROJECT_NAME} SOURCE)
 # The executable
 add_executable(${PROJECT_NAME} ${HEADERS} ${SOURCE})
 
+# Set properties
+set_target_properties(${PROJECT_NAME} PROPERTIES CXX_STANDARD_REQUIRED 17)
+
 # Include directories
 target_include_directories(${PROJECT_NAME} PUBLIC "include")
 
 # Find dependencies
+find_package(SDL2 REQUIRED)
 find_package(OpenGL REQUIRED)
 
 # Add dependencies
-target_link_libraries(${PROJECT_NAME} ${OPENGL_LIBRARIES})
+target_link_libraries(${PROJECT_NAME} ${SDL2_LIBRARIES} ${OPENGL_LIBRARIES})
 
 # Add file source path defines
 define_file_source_paths(${PROJECT_NAME})
@@ -140,4 +141,4 @@ define_file_source_paths(${PROJECT_NAME})
 # Add subdirectores
 add_subdirectory(test)
 
-########################################################################################################################
+##----------------------------------------------------------------------------------------------------------------------

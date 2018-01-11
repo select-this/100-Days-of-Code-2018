@@ -1,4 +1,4 @@
-########################################################################################################################
+##----------------------------------------------------------------------------------------------------------------------
 ##
 ## Copyright (c) 2018 Darren Paul Ferrie
 ##
@@ -15,19 +15,22 @@
 ## COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR
 ## OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 ##
-########################################################################################################################
+##----------------------------------------------------------------------------------------------------------------------
 
 # Project name
 set(PROJECT_NAME "unit_tests")
 
 # Source files
-set(SOURCE "test_main.cpp")
+set(SOURCE "test.cpp")
 
 # Enable unity build
 enable_unity_build(${PROJECT_NAME} SOURCE)
 
 # The executable
 add_executable(${PROJECT_NAME} ${HEADERS} ${SOURCE})
+
+# Set properties
+set_target_properties(${PROJECT_NAME} PROPERTIES CXX_STANDARD_REQUIRED 17)
 
 # Include directories
 target_include_directories(${PROJECT_NAME} PUBLIC "../lib/acutest")
@@ -41,4 +44,4 @@ add_test(NAME ${PROJECT_NAME} COMMAND ${PROJECT_NAME})
 # Add test command
 add_custom_command(TARGET ${PROJECT_NAME} COMMENT "Run tests" POST_BUILD COMMAND ${PROJECT_NAME})
 
-########################################################################################################################
+##----------------------------------------------------------------------------------------------------------------------
