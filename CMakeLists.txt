@@ -128,12 +128,16 @@ set_target_properties(${PROJECT_NAME} PROPERTIES CXX_STANDARD_REQUIRED 17)
 # Include directories
 target_include_directories(${PROJECT_NAME} PUBLIC "include")
 
+# Add the CMake module path
+set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_CURRENT_LIST_DIR}/cmake/")
+
 # Find dependencies
+find_package(SDL2_ttf REQUIRED)
 find_package(SDL2 REQUIRED)
 find_package(OpenGL REQUIRED)
 
 # Add dependencies
-target_link_libraries(${PROJECT_NAME} ${SDL2_LIBRARIES} ${OPENGL_LIBRARIES})
+target_link_libraries(${PROJECT_NAME} ${SDL2TTF_LIBRARY} ${SDL2_LIBRARIES} ${OPENGL_LIBRARIES})
 
 # Add file source path defines
 define_file_source_paths(${PROJECT_NAME})
