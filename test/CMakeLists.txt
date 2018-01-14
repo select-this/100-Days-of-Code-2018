@@ -33,13 +33,42 @@ add_executable(${PROJECT_NAME} ${HEADERS} ${SOURCE})
 set_target_properties(${PROJECT_NAME} PROPERTIES CXX_STANDARD_REQUIRED 17)
 
 # Include directories
-target_include_directories(${PROJECT_NAME} PUBLIC "../lib/acutest")
+target_include_directories(${PROJECT_NAME} PUBLIC "../lib/acutest/include")
 
 # Enable unit testing
 enable_testing()
 
 # Add test
 add_test(NAME ${PROJECT_NAME} COMMAND ${PROJECT_NAME})
+
+# Compile & link options for the project
+if(MSVC)
+    # TODO: I know next to nothing about MSVC at the moment! Maybe one day I'll come back to this...
+else()
+    target_compile_options(${PROJECT_NAME} PUBLIC
+        "-MMD"
+        "-MP"
+        "-g"
+        "-Wall"
+        "-Wextra"
+        "-Werror"
+        "-Wuninitialized"
+        "-Wformat"
+        "-Wformat-security"
+        "-Werror=format-security"
+        "-pthread"
+        "-fstack-protector-strong"
+        "-Wstack-protector"
+        "-Wdate-time"
+        "-feliminate-unused-debug-types"
+        "-Wdouble-promotion"
+        "-Wno-missing-braces")
+    link_libraries(
+        "-Wl,-z,relro,-z,now"
+        "-fstack-protector-strong"
+        "-Wstack-protector"
+        "-feliminate-unused-debug-types")
+endif()
 
 # Add test command
 add_custom_command(TARGET ${PROJECT_NAME} COMMENT "Run tests" POST_BUILD COMMAND ${PROJECT_NAME})

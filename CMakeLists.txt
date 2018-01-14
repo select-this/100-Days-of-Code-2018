@@ -30,35 +30,6 @@ endif()
 # Set the configuration types
 set(CMAKE_CONFIGURATION_TYPES Debug Release CACHE TYPE INTERNAL FORCE)
 
-if(MSVC)
-    # TODO: I know next to nothing about MSVC at the moment! Maybe one day I'll come back to this...
-else()
-    add_compile_options(
-        "-MMD"
-        "-MP"
-        "-g"
-        "-Wall"
-        "-Wextra"
-        "-Werror"
-        "-Wuninitialized"
-        "-Wformat"
-        "-Wformat-security"
-        "-Werror=format-security"
-        "-pthread"
-        "-fstack-protector-strong"
-        "-Wstack-protector"
-        "-Wdate-time"
-        "-feliminate-unused-debug-types"
-        "-Wuseless-cast"
-        "-Wdouble-promotion"
-        "-Wno-missing-braces")
-    link_libraries(
-        "-Wl,-z,relro,-z,now"
-        "-fstack-protector-strong"
-        "-Wstack-protector"
-        "-feliminate-unused-debug-types")
-endif()
-
 # Set a default build type if one isn't specified
 if(NOT CMAKE_BUILD_TYPE)
     set(CMAKE_BUILD_TYPE "Debug" CACHE STRING "Choose the type of build, options are: Debug Release" FORCE)
@@ -111,10 +82,12 @@ set(PROJECT_NAME "100-Days-of-Code-2018")
 project(${PROJECT_NAME})
 
 # Headers for this project
-#set(HEADERS "include/tmp.hpp")
+#set(HEADERS
+#"include/tmp.hpp")
 
 # Source files
-set(SOURCE "src/main.cpp")
+set(SOURCE
+"src/main.cpp")
 
 # Enable unity build
 enable_unity_build(${PROJECT_NAME} SOURCE)
@@ -125,19 +98,50 @@ add_executable(${PROJECT_NAME} ${HEADERS} ${SOURCE})
 # Set properties
 set_target_properties(${PROJECT_NAME} PROPERTIES CXX_STANDARD_REQUIRED 17)
 
+# Compile & link options for the target
+if(MSVC)
+    # TODO: I know next to nothing about MSVC at the moment! Maybe one day I'll come back to this...
+else()
+    target_compile_options(${PROJECT_NAME} PUBLIC
+        "-MMD"
+        "-MP"
+        "-g"
+        "-Wall"
+        "-Wextra"
+        "-Werror"
+        "-Wuninitialized"
+        "-Wformat"
+        "-Wformat-security"
+        "-Werror=format-security"
+        "-pthread"
+        "-fstack-protector-strong"
+        "-Wstack-protector"
+        "-Wdate-time"
+        "-feliminate-unused-debug-types"
+        "-Wuseless-cast"
+        "-Wdouble-promotion"
+        "-Wno-missing-braces")
+    link_libraries(
+        "-Wl,-z,relro,-z,now"
+        "-fstack-protector-strong"
+        "-Wstack-protector"
+        "-feliminate-unused-debug-types")
+endif()
+
 # Include directories
 target_include_directories(${PROJECT_NAME} PUBLIC "include")
 
-# Add the CMake module path
-set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_CURRENT_LIST_DIR}/cmake/")
+# Add the CMake module paths
+set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_CURRENT_LIST_DIR}/cmake/sdl2")
 
 # Find dependencies
+find_package(SDL2_image REQUIRED)
 find_package(SDL2_ttf REQUIRED)
 find_package(SDL2 REQUIRED)
 find_package(OpenGL REQUIRED)
 
 # Add dependencies
-target_link_libraries(${PROJECT_NAME} ${SDL2TTF_LIBRARY} ${SDL2_LIBRARIES} ${OPENGL_LIBRARIES})
+target_link_libraries(${PROJECT_NAME} ${SDLIMAGE_LIBRARY} ${SDL2TTF_LIBRARY} ${SDL2_LIBRARY} ${OPENGL_LIBRARIES})
 
 # Add file source path defines
 define_file_source_paths(${PROJECT_NAME})

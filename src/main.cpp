@@ -25,8 +25,43 @@
 #include <list>
 #include <memory>
 #include <map>
+#include <random>
 #include <SDL2/SDL.h>
+#include <SDL2/SDL_image.h>
 #include <SDL2/SDL_ttf.h>
+#include <vector>
+
+//----------------------------------------------------------------------------------------------------------------------
+
+struct bar
+{
+    bool operator<(const bar& rhs) const
+    {
+        return id < rhs.id;
+    }
+
+    int id;
+    int percent_current;
+    int percent_min;
+    int percent_max;
+};
+
+struct depletion
+{
+    int percent = 1;
+};
+
+namespace std
+{
+    template<>
+    struct hash<bar>
+    {
+        std::size_t operator()(const bar& rhs) const
+        {
+            return rhs.id;
+        }
+    };
+}
 
 //----------------------------------------------------------------------------------------------------------------------
 
@@ -48,10 +83,10 @@ int main()
         constexpr int WINDOW_HEIGHT = 768;
         constexpr int WINDOW_HPOS = SDL_WINDOWPOS_UNDEFINED;
         constexpr int WINDOW_VPOS = SDL_WINDOWPOS_UNDEFINED;
-        constexpr int WINDOW_FLAGS = SDL_WINDOW_OPENGL | SDL_WINDOW_SHOWN;
+        constexpr int WINDOW_FLAGS = SDL_WINDOW_OPENGL | SDL_WINDOW_SHOWN/* | SDL_WINDOW_RESIZABLE*/;
         constexpr const char* WINDOW_TITLE = "100 Days of Code 2018";
 
-        std::unique_ptr<SDL_Window, void(*)(SDL_Window*)> window(SDL_CreateWindow(
+        const std::unique_ptr<SDL_Window, void(*)(SDL_Window*)> window(SDL_CreateWindow(
             WINDOW_TITLE, WINDOW_HPOS, WINDOW_VPOS, WINDOW_WIDTH, WINDOW_HEIGHT, WINDOW_FLAGS), SDL_DestroyWindow);
 
         if(!window)
@@ -59,23 +94,24 @@ int main()
             throw std::runtime_error(SDL_GetError());
         }
 
-        std::unique_ptr<void, void(*)(SDL_GLContext)> context(SDL_GL_CreateContext(window.get()), SDL_GL_DeleteContext);
+        const std::unique_ptr<void, void(*)(SDL_GLContext)> context(
+            SDL_GL_CreateContext(window.get()), SDL_GL_DeleteContext);
 
         if(!context)
         {
             throw std::runtime_error(SDL_GetError());
         }
 
-        std::unique_ptr<SDL_Renderer, void(*)(SDL_Renderer*)> renderer(
-            SDL_CreateRenderer(window.get(), -1, SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC),
-            SDL_DestroyRenderer);
+        const std::unique_ptr<SDL_Renderer, void(*)(SDL_Renderer*)> renderer(
+            SDL_CreateRenderer(window.get(), -1,  SDL_RENDERER_ACCELERATED |
+                SDL_RENDERER_PRESENTVSYNC | SDL_RENDERER_TARGETTEXTURE), SDL_DestroyRenderer);
 
         if(!renderer)
         {
             throw std::runtime_error(SDL_GetError());
         }
 
-        std::unique_ptr<TTF_Font, void(*)(TTF_Font*)> font(
+        const std::unique_ptr<TTF_Font, void(*)(TTF_Font*)> font(
             TTF_OpenFont("../asset/font/saxmono.ttf", 16), TTF_CloseFont);
 
         if(!font)
@@ -83,30 +119,57 @@ int main()
             throw std::runtime_error(SDL_GetError());
         }
 
-        constexpr const char* text = "Press x key to start / stop depletion of bar, or z key to refill bar";
+        constexpr const char* key_string =
+            "Press x key to start / stop depletion of bar, z key to refill bar, q key to quit";
 
-        std::unique_ptr<SDL_Surface, void(*)(SDL_Surface*)> text_surface(
-            TTF_RenderText_Solid(font.get(), text, { 255, 255, 255, 255 }), SDL_FreeSurface);
+        const std::unique_ptr<SDL_Surface, void(*)(SDL_Surface*)> key_string_surface(
+            TTF_RenderText_Solid(font.get(), key_string, { 255, 255, 255, 255 }), SDL_FreeSurface);
 
-        if(!text_surface)
+        if(!key_string_surface)
         {
             throw std::runtime_error(SDL_GetError());
         }
 
-        std::unique_ptr<SDL_Texture, void(*)(SDL_Texture*)> text_texture(
-            SDL_CreateTextureFromSurface(renderer.get(), text_surface.get()), SDL_DestroyTexture);
+        const std::unique_ptr<SDL_Texture, void(*)(SDL_Texture*)> key_string_texture(
+            SDL_CreateTextureFromSurface(renderer.get(), key_string_surface.get()), SDL_DestroyTexture);
 
-        if(!text_texture)
+        if(!key_string_texture)
         {
             throw std::runtime_error(SDL_GetError());
         }
 
-        int text_width = 0;
-        int text_height = 0;
+        int key_string_width = 0;
+        int key_string_height = 0;
 
-        SDL_QueryTexture(text_texture.get(), NULL, NULL, &text_width, &text_height);
+        SDL_QueryTexture(key_string_texture.get(), NULL, NULL, &key_string_width, &key_string_height);
 
-        SDL_Rect text_rect = { 10, 10, text_width, text_height };
+        SDL_Rect key_string_rect = { 10, 10, key_string_width, key_string_height };
+
+        constexpr const char* frames_string =
+            "Average frames per second: ";
+
+        const std::unique_ptr<SDL_Surface, void(*)(SDL_Surface*)> frames_string_surface(
+            TTF_RenderText_Solid(font.get(), frames_string, { 255, 255, 255, 255 }), SDL_FreeSurface);
+
+        if(!frames_string_surface)
+        {
+            throw std::runtime_error(SDL_GetError());
+        }
+
+        const std::unique_ptr<SDL_Texture, void(*)(SDL_Texture*)> frames_string_texture(
+            SDL_CreateTextureFromSurface(renderer.get(), frames_string_surface.get()), SDL_DestroyTexture);
+
+        if(!frames_string_texture)
+        {
+            throw std::runtime_error(SDL_GetError());
+        }
+
+        int frames_string_width = 0;
+        int frames_string_height = 0;
+
+        SDL_QueryTexture(frames_string_texture.get(), NULL, NULL, &frames_string_width, &frames_string_height);
+
+        SDL_Rect frames_string_rect = { 10, 20 + key_string_height, frames_string_width, frames_string_height };
 
         int renderer_width = 0;
         int renderer_height = 0;
@@ -117,26 +180,31 @@ int main()
 
         bool quit = false;
 
-        struct bar
-        {
-            bool operator<(const bar& rhs) const
-            {
-                return id < rhs.id;
-            }
-
-            int id;
-            int percent_current;
-            int percent_min;
-            int percent_max;
-        };
-
-        struct depletion
-        {
-            int percent;
-        };
-
         std::list<bar> bars({{ 0, 90, 0, 100 }});
         std::map<std::reference_wrapper<bar>, depletion, std::less<bar>> depletions;
+
+        const SDL_Rect outer_rect
+        {
+            static_cast<int>(std::floor(renderer_width / 2 - 200 + 0.5)),
+            static_cast<int>(std::floor(renderer_height / 2 - 40 + 0.5)),
+            400,
+            80
+        };
+
+        SDL_Rect inner_rect
+        {
+            outer_rect.x + 10,
+            outer_rect.y + 10,
+            outer_rect.w - 10,
+            outer_rect.h - 20
+        };
+
+        int frames = 0;
+
+        double start_time = SDL_GetTicks();
+        double last_frame_time = 0.0;
+        double cycles_left_over = 0.0;
+        double average_frames_per_second = 0.0;
 
         while(!quit)
         {
@@ -165,6 +233,10 @@ int main()
                             case SDLK_z:
                                 bars.front().percent_current = bars.front().percent_max;
                                 break;
+
+                            case SDLK_q:
+                                quit = true;
+                                break;
                         }
                         break;
 
@@ -179,30 +251,27 @@ int main()
             constexpr double UPDATE_INTERVAL = 1.0 / MAXIMUM_FRAME_RATE;
             constexpr double MAX_CYCLES_PER_FRAME = MAXIMUM_FRAME_RATE / MINIMUM_FRAME_RATE;
 
-            static double lastFrameTime = 0.0;
-            static double cyclesLeftOver = 0.0;
+            double current_time = SDL_GetTicks();
+            double update_iterations = ((current_time - last_frame_time) + cycles_left_over);
 
-            double currentTime = SDL_GetTicks();
-            double updateIterations = ((currentTime - lastFrameTime) + cyclesLeftOver);
-
-            if(updateIterations > (MAX_CYCLES_PER_FRAME * UPDATE_INTERVAL))
+            if(update_iterations > (MAX_CYCLES_PER_FRAME * UPDATE_INTERVAL))
             {
-                updateIterations = (MAX_CYCLES_PER_FRAME * UPDATE_INTERVAL);
+                update_iterations = (MAX_CYCLES_PER_FRAME * UPDATE_INTERVAL);
             }
 
-            while(updateIterations > UPDATE_INTERVAL)
+            while(update_iterations > UPDATE_INTERVAL)
             {
-                updateIterations -= UPDATE_INTERVAL;
+                update_iterations -= UPDATE_INTERVAL;
 
-                for (auto iterator = depletions.begin(); iterator != depletions.end(); ++iterator)
+                for(auto iterator = depletions.begin(); iterator != depletions.end(); ++iterator)
                 {
                     iterator->first.get().percent_current -= iterator->second.percent;
 
-                    if (iterator->first.get().percent_current < iterator->first.get().percent_min)
+                    if(iterator->first.get().percent_current < iterator->first.get().percent_min)
                     {
                         iterator = depletions.erase(iterator);
 
-                        if (iterator == depletions.end())
+                        if(iterator == depletions.end())
                         {
                             break;
                         }
@@ -210,49 +279,69 @@ int main()
                 }
             }
 
-            cyclesLeftOver = updateIterations;
-            lastFrameTime = currentTime;
+            average_frames_per_second = frames / ((SDL_GetTicks() - start_time) / 1000.0);
+
+            cycles_left_over = update_iterations;
+            last_frame_time = current_time;
+
+            if(average_frames_per_second > 2000000)
+            {
+                average_frames_per_second = 0;
+            }
+
+            const std::unique_ptr<SDL_Surface, void(*)(SDL_Surface*)> afps_string_surface(
+                TTF_RenderText_Solid(font.get(),
+                    std::to_string(average_frames_per_second).c_str(), { 255, 255, 255, 255 }), SDL_FreeSurface);
+
+            if(!afps_string_surface)
+            {
+                throw std::runtime_error(SDL_GetError());
+            }
+
+            const std::unique_ptr<SDL_Texture, void(*)(SDL_Texture*)> afps_string_texture(
+                SDL_CreateTextureFromSurface(renderer.get(), afps_string_surface.get()), SDL_DestroyTexture);
+
+            if(!afps_string_texture)
+            {
+                throw std::runtime_error(SDL_GetError());
+            }
+
+            int afps_string_width = 0;
+            int afps_string_height = 0;
+
+            SDL_QueryTexture(afps_string_texture.get(), NULL, NULL, &afps_string_width, &afps_string_height);
+
+            SDL_Rect afps_string_rect = {
+                10 + frames_string_width, 20 + key_string_height, afps_string_width, afps_string_height };
 
             SDL_SetRenderDrawColor(renderer.get(), 0, 0, 0, 255);
 
             SDL_RenderClear(renderer.get());
 
-            SDL_RenderCopy(renderer.get(), text_texture.get(), nullptr, &text_rect);
-
-            SDL_Rect outer_rect
-            {
-                static_cast<int>(std::floor(renderer_width / 2 - 200 + 0.5)),
-                static_cast<int>(std::floor(renderer_height / 2 - 40 + 0.5)),
-                400,
-                80
-            };
+            SDL_RenderCopy(renderer.get(), key_string_texture.get(), nullptr, &key_string_rect);
+            SDL_RenderCopy(renderer.get(), frames_string_texture.get(), nullptr, &frames_string_rect);
+            SDL_RenderCopy(renderer.get(), afps_string_texture.get(), nullptr, &afps_string_rect);
 
             SDL_SetRenderDrawColor(renderer.get(), 50, 100, 200, 255);
 
             SDL_RenderFillRect(renderer.get(), &outer_rect);
 
-            int inner_width = static_cast<int>(
-                std::floor(380 * bars.front().percent_current / bars.front().percent_max + 0.5));
+            inner_rect.w = static_cast<int>(std::floor(
+                380 * bars.front().percent_current / bars.front().percent_max + 0.5));
 
-            if (inner_width > 0)
+            if(inner_rect.w > 0)
             {
-                SDL_Rect inner_rect
-                {
-                    static_cast<int>(std::floor(renderer_width / 2 - 190 + 0.5)),
-                    static_cast<int>(std::floor(renderer_height / 2 - 30 + 0.5)),
-                    inner_width,
-                    60
-                };
-
                 SDL_SetRenderDrawColor(renderer.get(), 20, 70, 170, 255);
 
                 SDL_RenderFillRect(renderer.get(), &inner_rect);
             }
 
             SDL_RenderPresent(renderer.get());
+
+            ++frames;
         }
     }
-    catch(std::runtime_error& exception)
+    catch(const std::runtime_error& exception)
     {
         std::cout << "Oh no, something bad happened! Exception: " << exception.what() << std::endl;
     }
